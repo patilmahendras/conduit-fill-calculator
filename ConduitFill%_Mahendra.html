@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Conduit Fill Calculator</title>
+
+<style>
+
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    margin:15px;
+    background:#f7f7f7;
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+.title{
+    font-size:28px;
+    font-weight:bold;
+    color:#003366;
+}
+
+.prepared{
+    font-size:14px;
+    font-weight:bold;
+}
+
+.project-info{
+    display:grid;
+    grid-template-columns:3fr 1fr 1fr 1fr;
+    gap:5px;
+    margin-bottom:10px;
+}
+
+.project-info input{
+    width:100%;
+    padding:6px;
+    box-sizing:border-box;
+}
+
+.section{
+    background:white;
+    padding:6px;
+    border-radius:6px;
+    margin-bottom:8px;
+    box-shadow:0 0 3px #ccc;
+}
+
+.design{
+    font-size:12px;
+    line-height:1.4;
+}
+
+.btn{
+    background:#FFD700;
+    border:none;
+    padding:8px 14px;
+    margin:3px;
+    font-weight:bold;
+    cursor:pointer;
+    border-radius:4px;
+}
+
+.deleteBtn{
+    background:red;
+    color:white;
+    border:none;
+    padding:5px 10px;
+    cursor:pointer;
+    border-radius:4px;
+}
+
+.table-container{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:11px;
+    background:white;
+}
+
+th{
+    background:#003366;
+    color:white;
+    padding:8px;
+    border:1px solid #ccc;
+    white-space:nowrap;
+}
+
+td{
+    border:1px solid #ccc;
+    padding:4px;
+    text-align:center;
+}
+
+input,
+select{
+    width:100%;
+    border:1px solid #ccc;
+    padding:4px;
+    box-sizing:border-box;
+}
+
+.pass{
+    background:#28a745;
+    color:#fff;
+    font-weight:bold;
+}
+
+.warning{
+    background:#ff9800;
+    color:#fff;
+    font-weight:bold;
+}
+
+.fail{
+    background:#dc3545;
+    color:#fff;
+    font-weight:bold;
+}
+
+@media print{
+    .btn{
+        display:none;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="header">
+
+    <div class="title">
+        Conduit Fill Calculator
+    </div>
+
+    <div class="prepared">
+        Prepared By : Mahendra Patil
+    </div>
+
+</div>
+
+<div class="project-info">
+
+    <div>
+        <label>Project Name</label>
+        <input type="text" id="projectName">
+    </div>
+
+    <div>
+        <label>Area</label>
+        <input type="text" id="area">
+    </div>
+
+    <div>
+        <label>Revision</label>
+        <input type="text" id="revision">
+    </div>
+
+    <div>
+        <label>Date</label>
+        <input type="date" id="date">
+    </div>
+
+</div>
+
+<div class="section">
+
+<b>Area / Application → Recommended Conduit</b><br><br>
+
+Hazardous → RMC/PVC‑RMC |
+Process → RMC/IMC |
+Tank Farm → RMC/PVC‑RMC |
+Control Room → EMT/IMC |
+Substation → RMC/IMC |
+Offshore → PVC‑RMC/RTRC |
+UG Power → PVC(RNC)/HDPE |
+UG Telecom → HDPE |
+Motor → LFMC |
+Analyzer → RMC/IMC |
+Corrosive → PVC‑RMC/RTRC
+
+</div>
+
+<div class="section design">
+
+<b>Design Basis :</b>
+
+SAES‑P‑104 |
+NFPA 70 (NEC Chapter 9 Table 1) |
+1 Cable = 53% Fill |
+2 Cables = 31% Fill |
+3 Or More Cables = 40% Fill
+
+</div>
+
+<div style="margin-bottom:10px;">
+
+<button class="btn" onclick="addRow()">Add</button>
+<button class="btn" onclick="saveData()">Save</button>
+<button class="btn" onclick="exportPDF()">Export PDF</button>
+<button class="btn" onclick="exportExcel()">Export Excel</button>
+
+</div>
+
+<div class="table-container">
+
+<table id="conduitTable">
+
+<thead>
+
+<tr>
+
+<th>Conduit No.</th>
+<th>Action</th>
+<th>Conduit Type</th>
+<th>Conduit Size (Inch)</th>
+<th>Conduit Size (mm)</th>
+<th>Conduit ID (mm)</th>
+<th>Conduit Area (mm²)</th>
+<th>Total Occupied Cable Area (mm²)</th>
+<th>% Fill</th>
+<th>Status</th>
+<th>Remark</th>
+<script>
+
+for(let i=1;i<=30;i++){
+
+    document.write(`<th>C${i} Tag</th>`);
+    document.write(`<th>C${i} OD (mm)</th>`);
+
+}
+
+</script>
+
+</tr>
+
+</thead>
+
+<tbody id="tbody">
+</tbody>
+
+</table>
+
+</div>
+
+<script>
+
+const conduitDB = {
+
+16:{id:16,area:201},
+21:{id:21,area:346},
+27:{id:27,area:572},
+35:{id:35,area:962},
+41:{id:41,area:1320},
+53:{id:53,area:2206},
+63:{id:63,area:3117},
+78:{id:78,area:4778},
+91:{id:91,area:6500},
+103:{id:103,area:8330}
+
+};
+
+let rowNo = 1;
+
+function syncSize(select){
+
+    let row = select.closest('tr');
+
+    row.querySelector('.size').value =
+    select.value;
+
+    calculate(row.querySelector('.size'));
+
+}
+
+function deleteRow(btn){
+
+    btn.closest('tr').remove();
+
+}
+
+function saveData(){
+
+    let data = [];
+
+    document
+    .querySelectorAll("#tbody tr")
+    .forEach(row=>{
+
+        data.push({
+
+            conduitNo:
+            row.cells[0].innerText,
+
+            conduitType:
+            row.querySelector(".conduitType").value,
+
+            conduitSize:
+            row.querySelector(".size").value,
+
+            fill:
+            row.querySelector(".fillPct").innerText,
+
+            status:
+            row.querySelector(".statusCell").innerText,
+
+            remark:
+            row.querySelector(".remark").innerText
+
+        });
+
+    });
+
+    let blob =
+    new Blob(
+    [JSON.stringify(data,null,2)],
+    {type:"application/json"}
+    );
+
+    let a =
+    document.createElement("a");
+
+    a.href =
+    URL.createObjectURL(blob);
+
+    a.download =
+    "ConduitFillData.json";
+
+    a.click();
+
+}
+
+function exportExcel(){
+
+    let html =
+    document.getElementById(
+    "conduitTable"
+    ).outerHTML;
+
+    let blob =
+    new Blob(
+    [html],
+    {
+      type:
+      "application/vnd.ms-excel"
+    });
+
+    let a =
+    document.createElement("a");
+
+    a.href =
+    URL.createObjectURL(blob);
+
+    a.download =
+    "ConduitFill.xls";
+
+    a.click();
+
+}
+
+function exportPDF(){
+
+    window.print();
+
+}
+
+function addRow(){
+
+let cableInputs = "";
+
+for(let i=1;i<=30;i++){
+
+cableInputs += `
+
+<td>
+<input type="text">
+</td>
+
+<td>
+<input
+type="number"
+step="0.1"
+class="od"
+oninput="calculate(this)">
+</td>
+
+`;
+
+}
+
+let row =
+document.createElement('tr');
+
+row.innerHTML = `
+
+<td>${String(rowNo++).padStart(3,'0')}</td>
+
+<td>
+
+<button
+class="deleteBtn"
+onclick="deleteRow(this)">
+Delete
+</button>
+
+</td>
+
+<td>
+
+<select class="conduitType">
+
+<option>RMC</option>
+<option>IMC</option>
+<option>EMT</option>
+<option>PVC-RMC</option>
+<option>PVC(RNC)</option>
+<option>RTRC</option>
+<option>HDPE</option>
+<option>LFMC</option>
+
+</select>
+
+</td>
+
+<td>
+
+<select
+class="inchSize"
+onchange="syncSize(this)">
+
+<option value="16">1/2"</option>
+<option value="21">3/4"</option>
+<option value="27">1"</option>
+<option value="35">1-1/4"</option>
+<option value="41">1-1/2"</option>
+<option value="53">2"</option>
+<option value="63">2-1/2"</option>
+<option value="78">3"</option>
+<option value="91">3-1/2"</option>
+<option value="103">4"</option>
+
+</select>
+
+</td>
+
+<td>
+
+<select
+class="size"
+onchange="calculate(this)">
+
+<option value="16">16 mm</option>
+<option value="21">21 mm</option>
+<option value="27">27 mm</option>
+<option value="35">35 mm</option>
+<option value="41">41 mm</option>
+<option value="53">53 mm</option>
+<option value="63">63 mm</option>
+<option value="78">78 mm</option>
+<option value="91">91 mm</option>
+<option value="103">103 mm</option>
+
+</select>
+
+</td>
+
+<td class="id">16</td>
+
+<td class="conduitArea">201</td>
+
+<td class="totalCableArea">0.0</td>
+
+<td class="fillPct">0.0</td>
+
+<td class="statusCell pass">
+PASS
+</td>
+
+<td class="remark">
+Conduit Fill Acceptable
+</td>
+
+${cableInputs}
+
+`;
+
+document
+.getElementById('tbody')
+.appendChild(row);
+
+calculate(
+row.querySelector('.size')
+);
+
+}
+function calculate(element){
+
+    let row =
+    element.closest('tr');
+
+    let size =
+    row.querySelector('.size').value;
+
+    let conduitID =
+    conduitDB[size].id;
+
+    let conduitArea =
+    conduitDB[size].area;
+
+    row.querySelector('.id').innerText =
+    conduitID;
+
+    row.querySelector('.conduitArea').innerText =
+    conduitArea;
+
+    let totalArea = 0;
+    let cableCount = 0;
+
+    row.querySelectorAll('.od')
+    .forEach(item=>{
+
+        let od =
+        parseFloat(item.value);
+
+        if(!isNaN(od) && od > 0){
+
+            cableCount++;
+
+            totalArea +=
+            Math.PI *
+            od *
+            od / 4;
+
+        }
+
+    });
+
+    let allowable = 40;
+
+    if(cableCount === 1)
+        allowable = 53;
+
+    if(cableCount === 2)
+        allowable = 31;
+
+    let fillPercent = 0;
+
+    if(conduitArea > 0){
+
+        fillPercent =
+        (totalArea /
+        conduitArea) * 100;
+
+    }
+
+    row.querySelector(
+    '.totalCableArea'
+    ).innerText =
+    totalArea.toFixed(1);
+
+    row.querySelector(
+    '.fillPct'
+    ).innerText =
+    fillPercent.toFixed(1);
+
+    let remark = '';
+
+    let statusCell =
+    row.querySelector(
+    '.statusCell'
+    );
+
+    if(fillPercent <
+       allowable * 0.90){
+
+        statusCell.className =
+        'statusCell pass';
+
+        statusCell.innerText =
+        'PASS';
+
+        remark =
+        'Conduit Fill Acceptable';
+
+    }
+    else if(fillPercent <=
+            allowable){
+
+        statusCell.className =
+        'statusCell warning';
+
+        statusCell.innerText =
+        'WARNING';
+
+        remark =
+        'Near Fill Limit';
+
+    }
+    else{
+
+        statusCell.className =
+        'statusCell fail';
+
+        statusCell.innerText =
+        'FAIL';
+
+        remark =
+        'Increase Conduit Size';
+
+    }
+
+    row.querySelector(
+    '.remark'
+    ).innerText =
+    remark;
+
+}
+
+addRow();
+
+</script>
+
+</body>
+
+</html>
